@@ -1,0 +1,22 @@
+{
+  "name": "demo-auth",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "provision-claims": "node scripts/provision-claims.mjs"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.49.0",
+    "firebase": "^11.6.0"
+  },
+  "devDependencies": {
+    "vite": "^6.3.0"
+  },
+  "optionalDependencies": {
+    "firebase-admin": "^13.4.0"
+  }
+}

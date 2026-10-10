@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Firebase Authentication with Supabase PostgreSQL demo — register, login, and manage records with Row Level Security." />
+  <title>Firebase + Supabase Auth Demo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/src/style.css" />
+</head>
+<body>
+  <div id="app">
+    <!-- ── Global toast container ─────────────────────────────── -->
+    <div id="toast-container" aria-live="polite"></div>
+
+    <!-- ── Full-screen loader (initial auth check) ────────────── -->
+    <div id="loading-overlay" class="overlay visible">
+      <div class="spinner"></div>
+      <p>Checking session…</p>
+    </div>
+
+    <!-- ── Config Notice (shown if .env credentials are not yet populated) ── -->
+    <section id="config-notice-section" class="hidden">
+      <div class="auth-card glass config-card">
+        <div class="auth-header">
+          <div class="logo-icon">⚙️</div>
+          <h1>Configuration Required</h1>
+          <p class="subtitle">Firebase &amp; Supabase credentials needed in <code>.env</code></p>
+        </div>
+        <div class="config-instructions">
+          <p>Please open the <strong><code>.env</code></strong> file in your project root and paste your project credentials:</p>
+          <ul id="missing-vars-list" class="missing-list"></ul>
+          <div class="config-tip">
+            <span class="tip-icon">💡</span>
+            <p>Once you save your <code>.env</code> file, Vite will reload automatically and this screen will switch to the login portal.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════
+         AUTH VIEWS
+    ══════════════════════════════════════════════════════════ -->
+    <section id="auth-section" class="hidden">
+      <div class="auth-card glass">
+        <div class="auth-header">
+          <div class="logo-icon">🔐</div>
+          <h1>Demo Auth</h1>
+          <p class="subtitle">Firebase Authentication · Supabase PostgreSQL</p>
+        </div>
+
+        <!-- Tab switcher -->
+        <div class="tab-bar" role="tablist">
+          <button id="tab-login" class="tab active" role="tab" aria-selected="true" data-tab="login">Login</button>
+          <button id="tab-register" class="tab" role="tab" aria-selected="false" data-tab="register">Register</button>
+        </div>
+
+        <!-- Login form -->
+        <form id="login-form" class="auth-form" autocomplete="on">
+          <div class="field">
+            <label for="login-email">Email</label>
+            <input id="login-email" type="email" required placeholder="you@example.com" autocomplete="email" />
+          </div>
+          <div class="field">
+            <div class="field-header">
+              <label for="login-password">Password</label>
+              <button id="forgot-password-link" type="button" class="text-link-btn forgot-link">Forgot password?</button>
+            </div>
+            <input id="login-password" type="password" required placeholder="••••••••" autocomplete="current-password" />
+          </div>
+          <button id="login-submit" type="submit" class="btn primary">
+            <span class="btn-text">Sign in</span>
+            <span class="btn-spinner spinner-sm hidden"></span>
+          </button>
+        </form>
+
+        <!-- Register form -->
+        <form id="register-form" class="auth-form hidden" autocomplete="on">
+          <div class="field">
+            <label for="register-name">Full name</label>
+            <input id="register-name" type="text" required placeholder="Jane Doe" autocomplete="name" />
+          </div>
+          <div class="field">
+            <label for="register-email">Email</label>
+            <input id="register-email" type="email" required placeholder="you@example.com" autocomplete="email" />
+          </div>
+          <div class="field">
+            <label for="register-password">Password</label>
+            <input id="register-password" type="password" required minlength="6" placeholder="min 6 characters" autocomplete="new-password" />
+          </div>
+          <button id="register-submit" type="submit" class="btn primary">
+            <span class="btn-text">Create account</span>
+            <span class="btn-spinner spinner-sm hidden"></span>
+          </button>
+        </form>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════
+         EMAIL VERIFICATION VIEW
+    ══════════════════════════════════════════════════════════ -->
+    <section id="verify-email-section" class="hidden">
+      <div class="auth-card glass verify-card">
+        <div class="auth-header">
+          <div class="logo-icon pulse-icon">📩</div>
+          <h1>Verify your Email</h1>
+          <p class="subtitle">A verification link was sent to</p>
+          <div id="verify-email-display" class="verify-target-email">user@example.com</div>
+        </div>
+
+        <div class="verify-content">
+          <p class="verify-description">
+            Please check your inbox (and spam/junk folder) and click the link to activate your account.
+          </p>
+
+          <div class="verify-pulse-banner">
+            <span class="spinner-sm"></span>
+            <span>Auto-detecting verification status…</span>
+          </div>
+
+          <div class="verify-actions">
+            <button id="check-verify-btn" class="btn primary">
+              <span class="btn-text">I've verified my email</span>
+              <span class="btn-spinner spinner-sm hidden"></span>
+            </button>
+
+            <button id="resend-verify-btn" class="btn outline">
+              <span class="btn-text">Resend email</span>
+              <span class="btn-spinner spinner-sm hidden"></span>
+            </button>
+          </div>
+
+          <div class="verify-footer">
+            <button id="verify-cancel-btn" class="text-link-btn">← Sign in with a different account</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══════════════════════════════════════════════════════════
+         DASHBOARD
+    ══════════════════════════════════════════════════════════ -->
+    <section id="dashboard-section" class="hidden">
+      <!-- Top bar -->
+      <header class="topbar glass">
+        <div class="topbar-left">
+          <span class="logo-icon-sm">🔐</span>
+          <span class="topbar-title">Dashboard</span>
+        </div>
+        <div class="topbar-right">
+          <span id="user-email-badge" class="user-badge"></span>
+          <button id="logout-btn" class="btn outline small">Logout</button>
+        </div>
+      </header>
+
+      <main class="dashboard-grid">
+        <!-- User info card -->
+        <div class="card glass" id="profile-card">
+          <h2>Your Profile</h2>
+          <div id="profile-details" class="profile-details">
+            <div class="detail-row"><span class="label">Name</span><span id="profile-name" class="value">—</span></div>
+            <div class="detail-row"><span class="label">Email</span><span id="profile-email" class="value">—</span></div>
+            <div class="detail-row"><span class="label">UID</span><span id="profile-uid" class="value mono">—</span></div>
+            <div class="detail-row"><span class="label">Provider</span><span id="profile-provider" class="value">—</span></div>
+            <div class="detail-row"><span class="label">Role claim</span><span id="profile-role" class="value">—</span></div>
+          </div>
+
+          <!-- Danger Zone -->
+          <div class="profile-danger-zone">
+            <h3>Danger Zone</h3>
+            <p class="danger-desc">Permanently delete your account and all associated Supabase records.</p>
+            <button id="delete-account-btn" class="btn danger small">
+              <span class="btn-text">🗑️ Delete Account</span>
+              <span class="btn-spinner spinner-sm hidden"></span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Records CRUD -->
+        <div class="card glass" id="records-card">
+          <div class="card-header">
+            <h2>Test Records</h2>
+            <button id="refresh-records-btn" class="btn outline small" title="Refresh">↻ Refresh</button>
+          </div>
+
+          <!-- Create / edit form -->
+          <form id="record-form" class="record-form">
+            <input id="record-id" type="hidden" />
+            <div class="field-row">
+              <div class="field flex-1">
+                <label for="record-title">Title</label>
+                <input id="record-title" type="text" required placeholder="e.g. My first record" />
+              </div>
+              <div class="field flex-2">
+                <label for="record-description">Description</label>
+                <input id="record-description" type="text" placeholder="Optional description text" />
+              </div>
+            </div>
+            <div class="form-actions">
+              <button id="record-submit" type="submit" class="btn primary small">
+                <span class="btn-text">Add</span>
+                <span class="btn-spinner spinner-sm hidden"></span>
+              </button>
+              <button id="record-cancel" type="button" class="btn outline small hidden">Cancel</button>
+            </div>
+          </form>
+
+          <!-- Records list -->
+          <div id="records-list-container">
+            <div id="records-loading" class="empty-state">
+              <div class="spinner"></div>
+              <p>Loading records…</p>
+            </div>
+            <div id="records-empty" class="empty-state hidden">
+              <p>📭 No records yet — create one above!</p>
+            </div>
+            <ul id="records-list" class="records-list hidden"></ul>
+          </div>
+        </div>
+      </main>
+    </section>
+
+    <!-- ── Account deletion confirmation modal ────────────────── -->
+    <div id="delete-modal" class="overlay hidden">
+      <div class="auth-card glass delete-modal-card">
+        <div class="auth-header">
+          <div class="logo-icon">⚠️</div>
+          <h2>Delete Account?</h2>
+          <p class="subtitle">This action is permanent and cannot be undone.</p>
+        </div>
+        <div class="modal-body">
+          <p>Your login credentials in Firebase and all profile data and records in Supabase will be permanently erased.</p>
+        </div>
+        <div class="modal-actions">
+          <button id="confirm-delete-btn" class="btn danger-filled">
+            <span class="btn-text">Yes, Delete Account</span>
+            <span class="btn-spinner spinner-sm hidden"></span>
+          </button>
+          <button id="cancel-delete-btn" class="btn outline">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Forgot password modal ──────────────────────────────── -->
+    <div id="forgot-modal" class="overlay hidden">
+      <div class="auth-card glass delete-modal-card">
+        <div class="auth-header">
+          <div class="logo-icon">🔑</div>
+          <h2>Reset Password</h2>
+          <p class="subtitle">Enter your email and we'll send you a password reset link.</p>
+        </div>
+        <form id="forgot-form" class="auth-form">
+          <div class="field">
+            <label for="forgot-email">Email Address</label>
+            <input id="forgot-email" type="email" required placeholder="you@example.com" autocomplete="email" />
+          </div>
+          <div class="modal-actions">
+            <button id="forgot-submit-btn" type="submit" class="btn primary">
+              <span class="btn-text">Send Reset Link</span>
+              <span class="btn-spinner spinner-sm hidden"></span>
+            </button>
+            <button id="cancel-forgot-btn" type="button" class="btn outline">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
