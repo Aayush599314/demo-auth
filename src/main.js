@@ -23,6 +23,8 @@ import {
   sendEmailVerification,
   sendPasswordResetEmail,
   deleteUser,
+  googleProvider,
+  signInWithPopup,
   isFirebaseConfigured,
   missingFirebaseVars,
 } from './firebase.js';
@@ -50,6 +52,7 @@ const tabLogin        = $('#tab-login');
 const tabRegister     = $('#tab-register');
 const loginForm       = $('#login-form');
 const registerForm    = $('#register-form');
+const googleSignInBtn = $('#google-signin-btn');
 
 const logoutBtn       = $('#logout-btn');
 const userEmailBadge  = $('#user-email-badge');
@@ -368,6 +371,26 @@ loginForm.addEventListener('submit', async (e) => {
     setBtnLoading(btn, false);
   }
 });
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  GOOGLE SIGN-IN
+// ══════════════════════════════════════════════════════════════════════════════
+
+if (googleSignInBtn) {
+  googleSignInBtn.addEventListener('click', async () => {
+    setBtnLoading(googleSignInBtn, true);
+    try {
+      const cred = await signInWithPopup(auth, googleProvider);
+      toast(`Welcome, ${cred.user.displayName || cred.user.email}! 👋`, 'success');
+    } catch (err) {
+      if (err.code !== 'auth/popup-closed-by-user' && err.code !== 'auth/cancelled-popup-request') {
+        toast(friendlyError(err), 'error');
+      }
+    } finally {
+      setBtnLoading(googleSignInBtn, false);
+    }
+  });
+}
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  FORGOT PASSWORD
@@ -730,6 +753,8 @@ function friendlyError(err) {
     'auth/network-request-failed':'Network error — check your connection.',
     'auth/requires-recent-login': 'Please log in again before deleting your account.',
     'auth/missing-email':         'Please enter an email address.',
+    'auth/popup-blocked':         'Sign-in popup was blocked by browser. Please allow popups.',
+    'auth/account-exists-with-different-credential': 'An account already exists with the same email using a different login method.',
   };
   return map[err.code] || err.message || 'An unexpected error occurred.';
 }

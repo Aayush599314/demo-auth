@@ -17,7 +17,11 @@ import {
   sendEmailVerification,
   sendPasswordResetEmail,
   deleteUser,
+  GoogleAuthProvider,
+  signInWithPopup,
 } from 'firebase/auth';
+
+const googleProvider = new GoogleAuthProvider();
 
 
 const firebaseConfig = {
@@ -60,6 +64,8 @@ export {
   sendEmailVerification,
   sendPasswordResetEmail,
   deleteUser,
+  googleProvider,
+  signInWithPopup,
   isFirebaseConfigured,
   missingFirebaseVars,
 };
