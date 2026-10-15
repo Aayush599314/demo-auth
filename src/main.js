@@ -754,6 +754,7 @@ function friendlyError(err) {
     'auth/requires-recent-login': 'Please log in again before deleting your account.',
     'auth/missing-email':         'Please enter an email address.',
     'auth/popup-blocked':         'Sign-in popup was blocked by browser. Please allow popups.',
+    'auth/unauthorized-domain':   'This domain is not authorized in Firebase Console. Add your deployment URL to Authorized Domains.',
     'auth/account-exists-with-different-credential': 'An account already exists with the same email using a different login method.',
   };
   return map[err.code] || err.message || 'An unexpected error occurred.';
